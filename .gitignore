@@ -1,0 +1,24 @@
+# Data, checkpoints, and experiment artifacts
+data/
+datasets/
+checkpoints/
+logs/
+outputs/
+*.pth
+*.pt
+*.pth.tar
+*.ckpt
+*.pkl
+*.pickle
+*.tar
+*.tar.gz
+
+# Python and local tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.idea/
+.vscode/
+.DS_Store

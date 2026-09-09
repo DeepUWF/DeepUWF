@@ -1,0 +1,146 @@
+# DP Federated Learning Configuration for DeepUWF
+
+general:
+  seed: 42
+  device: "cuda"
+  save_dir: ""
+  log_dir: ""
+checkpoint:
+  pretrain: False
+  finetune: False 
+  eval: True
+
+client_key_path: "/path/to/workspace/weights/DeepUWFDP/random_attack_results_sample_key/client_keys.json"
+attackType: "hierar_subspace_pixcons" #hierar_subspace,hierar_subspace_pixcons
+#adv_save_dir: "/path/to/workspace/program_output/DeepUWF/random_attack_results_robust_subspace_correcttrainset"
+adv_save_dir: "/path/to/workspace/program_output/DeepUWF/random_attack_results_robust_subspace_correcttrainset_pixcons"
+
+statistics_cache_path: "/path/to/workspace/program_output/DeepUWF/random_attack_results_robust_subspace_correcttrainset_pixcons/statistics_cache.json"
+
+#
+margin_weight: 0.2
+margin: 0.2
+
+save_optimization_process: False
+optimization_process_dir: "/path/to/workspace/program_output/DeepUWF/random_attack_results_robust_subspace_correcttrainset_pixcons"
+
+# Dataset Configuration
+dataset:
+  name: "SHDR"
+  #base_path: "/path/to/workspace/dataset/DeepUWF/DR"
+  base_path: "/path/to/workspace/dataset/DeepUWF/SH_DR/shrdr/train"
+  #base_path: "/path/to/workspace/dataset/DeepUWF/SH_DR/shrdr/test"
+  train_split: 0.7
+  val_split: 0.3
+  test_split: 0
+  num_classes: 2  # class_0 and class_1
+  datatype: 2 # 0 for SH_DR imagefolder, 1 for DR pkl, 2 for SH_DR imagefoler and subject-wise name
+
+# Model Configuration (uses getTargetModel from generatePair.py)
+model:
+  type: "target_model"  # Will use getTargetModel() from generatePair.py
+  pretrain: False
+  chkpt_path: "/path/to/workspace/weights/DeepUWFDP/pretrain_distill_ffm_checkpoint-best.pth"
+  input_size: 448
+
+hyperparams:
+  blr: 0.001
+  min_lr: 0.000001
+  warmup_epochs: 10
+  batch_size: 48
+  label_smoothing: 0.1
+
+
+reconstruction:
+  enabled: false
+
+  # 自动使用 epoch 0、中间、最后
+  epoch_mode: auto
+
+  # 为了三阶段公平比较，始终使用相同的样本
+  fixed_indices_file: "/path/to/workspace/weights/DeepUWFDP/reconstruction_attack_indices.json"
+
+  # 建议每个类别固定选择一个样本，并分别做 batch-size=1 攻击
+  samples_per_class: 10
+  attack_batch_size: 1
+
+  # 训练期间先保存 attack payload，训练完成后再重构
+  run_after_training: true
+
+  #output_dir: "/path/to/workspace/weights/DeepUWFDP/DR_ep10_12_adamw/reconstructions"
+  output_dir: "/path/to/workspace/weights/DeepUWFDP/SHDR_DP_ep1_adamw_savegrad/reconstructions"
+
+  # 第一阶段先用被动 gradient matching
+  attack_type: "passive_gradient_matching"
+
+  known_labels: true
+  iterations: 2000
+  attack_lr: 0.05
+  tv_weight: 0.0001
+
+  # 全模型梯度体积很大，可以先匹配这些层
+  gradient_layer_suffixes: null #表示保存全部参数
+    # - "patch_embed.proj.weight"
+    # - "patch_embed.proj.bias"
+    # - "head.weight"
+    # - "head.bias"
+
+# Differential Privacy Configuration
+# 隐私预算参数配置
+dp:
+  enabled: False
+  epsilon: 1         # 隐私预算，越小隐私保护越强
+  delta: 1.0e-5           # 松弛项，通常设为 1/n_samples
+  max_per_sample_grad_norm: 1.0  # 每个样本梯度L2范数上限
+  sigma: null           # 噪声乘数（若为null则自动计算）
+  mechanism: "rdp"      # "rdp" (Renyi DP) 或 "gdp" (Gaussian DP)
+  norm_acc: False       # 是否使用范数累积
+  glrt_assumption: False
+  use_batch_sampling: True
+  alphas: []            # 额外的 RDP alpha 值
+  save_exposed_gradients: False   # 保存 clipping/noise/average 后暴露给 optimizer 的梯度
+  gradient_save_interval: 1
+  gradient_save_max_batches_per_epoch: 1
+  gradient_save_max_total: 1
+
+# Federated Learning Configuration
+federated_learning:
+  num_clients: 5                    # 客户端数量
+  clients_per_round: 3              # 每轮选择的客户端数量
+  num_rounds: 50                    # FL 总轮数
+  local_epochs: 1                   # 客户端本地训练轮数
+  partial_weight_fraction: 1      # 部分权重共享比例
+  
+  # Server Configuration
+  server:
+    address: "127.0.0.1:8080"
+    grpc_max_message_length: 0x7fffffff
+    
+  # Client Configuration
+  client:
+    sleep_time: 0.1  # 连接等待时间
+
+
+optimizer:
+  name: adamw
+  weight_decay: 0.05
+  betas: [0.9, 0.999]
+
+# Scheduler Configuration
+scheduler:
+  type: "cosine"  # "cosine", "step", "exponential"
+  warmup_epochs: 5
+  min_lr: 1e-5
+
+# Logging and Evaluation
+logging:
+  log_interval: 10      # 每N个batch记录一次
+  eval_interval: 1      # 每N个epoch评估一次
+  save_interval: 5      # 每N个epoch保存模型
+  use_wandb: False
+  project_name: "deepuwf-dp-fl"
+
+# Privacy Accounting
+privacy_accounting:
+  compute_final_epsilon: True
+  alphas: [1.5, 3.0, 10.0, 100.0]  # 用于 RDP 计算的 alpha 值

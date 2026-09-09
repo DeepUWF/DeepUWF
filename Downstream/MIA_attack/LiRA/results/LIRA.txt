@@ -1,0 +1,14 @@
+input_shape: (3, 448, 448)
+channel: 3
+num_classes: 2
+hidden_size: 512
+output_size: 10
+epochs: 50
+lr: 0.001
+perc: 0.0
+perc_test: 0.2
+measurement_number: 50
+num_shadow_models: 50
+lr_shadow_model: 0.001
+epochs_shadow_model: 20
+device: cuda

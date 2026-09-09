@@ -1,0 +1,107 @@
+# DP Federated Learning Configuration for DeepUWF
+
+general:
+  seed: 42
+  device: "cuda"
+  save_dir: ""
+  log_dir: ""
+
+checkpoint:
+  pretrain: False
+  finetune: False 
+  eval: True
+  
+
+# Dataset Configuration
+dataset:
+  name: "SHDR"
+  base_path: "/path/to/workspace/dataset/DeepUWF/SH_DR/shrdr/test"
+  train_split: 0
+  val_split: 0
+  test_split: 1.0
+  num_classes: 2  # class_0 and class_1
+  datatype: 4
+
+# Model Configuration (uses getTargetModel from generatePair.py)
+model:
+  type: "target_model"  # Will use getTargetModel() from generatePair.py
+  pretrain: False
+  input_size: 448
+
+# Training Hyperparameters
+# hyperparams:
+#   epochs: 50
+#   batch_size: 32
+#   batch_size_test: 32
+#   lr: 1e-3
+#   weight_decay: 0.05
+#   momentum: 0.9
+#   grad_acc_steps: 1  # Gradient accumulation steps
+#   label_smoothing: 0.1
+hyperparams:
+  blr: 0.001
+  min_lr: 0.000001
+  warmup_epochs: 5
+  batch_size: 64
+  label_smoothing: 0.1
+# Differential Privacy Configuration
+# 隐私预算参数配置
+dp:
+  enabled: False
+  epsilon: 8.0          # 隐私预算，越小隐私保护越强
+  delta: 1e-5           # 松弛项，通常设为 1/n_samples
+  max_per_sample_grad_norm: 1.0  # 每个样本梯度L2范数上限
+  sigma: null           # 噪声乘数（若为null则自动计算）
+  mechanism: "rdp"      # "rdp" (Renyi DP) 或 "gdp" (Gaussian DP)
+  norm_acc: False       # 是否使用范数累积
+  glrt_assumption: False
+  use_batch_sampling: True
+  alphas: []            # 额外的 RDP alpha 值
+
+# Federated Learning Configuration
+federated_learning:
+  num_clients: 5                    # 客户端数量
+  clients_per_round: 3              # 每轮选择的客户端数量
+  num_rounds: 50                    # FL 总轮数
+  local_epochs: 1                   # 客户端本地训练轮数
+  partial_weight_fraction: 1      # 部分权重共享比例
+  
+  # Server Configuration
+  server:
+    address: "127.0.0.1:8080"
+    grpc_max_message_length: 0x7fffffff
+    
+  # Client Configuration
+  client:
+    sleep_time: 0.1  # 连接等待时间
+
+# Optimizer Configuration
+# optimizer:
+#   name: "adamw"  # 或 "adam"
+#   lr: 1e-3
+#   momentum: 0.9
+#   weight_decay: 1e-4
+
+optimizer:
+  name: adamw
+  weight_decay: 0.05
+  betas: [0.9, 0.999]
+
+# Scheduler Configuration
+scheduler:
+  type: "cosine"  # "cosine", "step", "exponential"
+  warmup_epochs: 5
+  min_lr: 1e-5
+
+# Logging and Evaluation
+logging:
+  log_interval: 10      # 每N个batch记录一次
+  eval_interval: 1      # 每N个epoch评估一次
+  save_interval: 5      # 每N个epoch保存模型
+  use_wandb: False
+  project_name: "deepuwf-dp-fl"
+
+# Privacy Accounting
+privacy_accounting:
+  compute_final_epsilon: True
+  alphas: [1.5, 3.0, 10.0, 100.0]  # 用于 RDP 计算的 alpha 值
